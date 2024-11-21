@@ -27,7 +27,7 @@ const uploadFileToS3 = (fileBuffer, fileName) => {
     Body: fileBuffer,
     ACL: "public-read",
   };
-
+  
   return new Promise((resolve, reject) => {
     s3.upload(uploadParams, (err, data) => {
       if (err) {
