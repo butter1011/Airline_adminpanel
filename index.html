@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Airline and Airport Logo Upload</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="icon" type="image/png" href="logo.png">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 40px;
+            background-color: #ffffff;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 40px;
+            font-size: 36px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .upload-section {
+            margin-bottom: 40px;
+            background-color: #f9f9f9;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #3498db;
+            margin-bottom: 20px;
+            font-size: 28px;
+            font-weight: 600;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        select,
+        input[type="file"] {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        select:focus,
+        input[type="file"]:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        button {
+            cursor: pointer;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 16px 24px;
+            font-size: 18px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            width: 100%;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 200px;
+            margin-top: 15px;
+            border-radius: 6px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: none;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-input-wrapper .file-input-button {
+            display: inline-block;
+            padding: 14px;
+            background-color: #f0f0f0;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 16px;
+            color: #333;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-wrapper:hover .file-input-button {
+            background-color: #e0e0e0;
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .uploaded-list {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #e8f4fd;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .uploaded-list h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 22px;
+            font-weight: 600;
+        }
+
+        .uploaded-list ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        .uploaded-list li {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #ffffff;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .uploaded-list li:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+
+
+<body>
+    <div class="container">
+        <h1>Airline and Airport Logo Upload</h1>
+
+        <div class="upload-section">
+            <h2>Airlines</h2>
+            <select id="airlineSelect"></select>
+            <div class="file-input-wrapper">
+                <div class="file-input-button">Choose Airline Logo (PNG only)</div>
+                <input type="file" id="airlineLogo" accept="image/png"
+                    onchange="previewImage(this, 'airlineLogoPreview')">
+            </div>
+            <img id="airlineLogoPreview" class="preview-image" src="" alt="Airline Logo Preview">
+            <div class="file-input-wrapper">
+                <div class="file-input-button">Choose Airline Background (PNG only)</div>
+                <input type="file" id="airlineBackground" accept="image/png"
+                    onchange="previewImage(this, 'airlineBackgroundPreview')">
+            </div>
+            <img id="airlineBackgroundPreview" class="preview-image" src="" alt="Airline Background Preview">
+            <button onclick="uploadAirlineFiles()">Upload Airline Files</button>
+            <div id="airlineLoadingSpinner" class="loading-spinner"></div>
+            <div id="uploadedAirlinesList" class="uploaded-list">
+                <h3>Uploaded Airlines</h3>
+                <ul></ul>
+            </div>
+        </div>
+
+        <div class="upload-section">
+            <h2>Airports</h2>
+            <select id="airportSelect"></select>
+            <div class="file-input-wrapper">
+                <div class="file-input-button">Choose Airport Logo (PNG only)</div>
+                <input type="file" id="airportLogo" accept="image/png"
+                    onchange="previewImage(this, 'airportLogoPreview')">
+            </div>
+            <img id="airportLogoPreview" class="preview-image" src="" alt="Airport Logo Preview">
+            <div class="file-input-wrapper">
+                <div class="file-input-button">Choose Airport Background (PNG only)</div>
+                <input type="file" id="airportBackground" accept="image/png"
+                    onchange="previewImage(this, 'airportBackgroundPreview')">
+            </div>
+            <img id="airportBackgroundPreview" class="preview-image" src="" alt="Airport Background Preview">
+            <button onclick="uploadAirportFiles()">Upload Airport Files</button>
+            <div id="airportLoadingSpinner" class="loading-spinner"></div>
+            <div id="uploadedAirportsList" class="uploaded-list">
+                <h3>Uploaded Airports</h3>
+                <ul></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let airlines = [];
+        let airports = [];
+        let uploadedFiles = new Set();
+
+        toastr.options = {
+            "closeButton": true,
+            "debug": false,
+            "newestOnTop": false,
+            "progressBar": true,
+            "positionClass": "toast-top-right",
+            "preventDuplicates": false,
+            "onclick": null,
+            "showDuration": "300",
+            "hideDuration": "1000",
+            "timeOut": "5000",
+            "extendedTimeOut": "1000",
+            "showEasing": "swing",
+            "hideEasing": "linear",
+            "showMethod": "fadeIn",
+            "hideMethod": "fadeOut"
+        }
+
+        async function fetchAirlinesAndAirports() {
+            try {
+                const response = await axios.get('https://airline-backend-c8p8.onrender.com/api/v2/airline-airport/lists');
+                const { data } = response.data;
+
+                airlines = data.airlines;
+                airports = data.airports;
+
+                populateSelect('airlineSelect', airlines);
+                populateSelect('airportSelect', airports);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                toastr.error('Failed to fetch airlines and airports. Please try again.');
+            }
+        }
+
+        function populateSelect(selectId, items) {
+            const select = document.getElementById(selectId);
+            items.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item._id;
+                option.textContent = item.name;
+                select.appendChild(option);
+            });
+        }
+
+        async function uploadFiles(type) {
+            const select = document.getElementById(`${type}Select`);
+            const logo = document.getElementById(`${type}Logo`).files[0];
+            const background = document.getElementById(`${type}Background`).files[0];
+            const id = select.value;
+
+            if (!logo || !background) {
+                toastr.warning('Please select both logo and background files.');
+                return;
+            }
+
+            if (logo.type !== 'image/png' || background.type !== 'image/png') {
+                toastr.error('Please upload PNG files only.');
+                return;
+            }
+
+            const logoKey = `${type}s/logos/${id}_logo.png`;
+            const backgroundKey = `${type}s/backgrounds/${id}_background.png`;
+
+            if (uploadedFiles.has(logoKey) || uploadedFiles.has(backgroundKey)) {
+                toastr.info('Files for this item have already been uploaded.');
+                return;
+            }
+
+            const loadingSpinner = document.getElementById(`${type}LoadingSpinner`);
+            loadingSpinner.style.display = 'block';
+
+            try {
+                const logoUrl = await uploadFileToS3(logo, logoKey);
+                const backgroundUrl = await uploadFileToS3(background, backgroundKey);
+
+                uploadedFiles.add(logoKey);
+                uploadedFiles.add(backgroundKey);
+
+                toastr.success('Files uploaded successfully!');
+
+                // Reset the file inputs and previews
+                document.getElementById(`${type}Logo`).value = '';
+                document.getElementById(`${type}Background`).value = '';
+                document.getElementById(`${type}LogoPreview`).src = '';
+                document.getElementById(`${type}LogoPreview`).style.display = 'none';
+                document.getElementById(`${type}BackgroundPreview`).src = '';
+                document.getElementById(`${type}BackgroundPreview`).style.display = 'none';
+
+                // Update the uploaded list
+                updateUploadedList(type, select.options[select.selectedIndex].text);
+
+            } catch (error) {
+                console.error('Error uploading files:', error);
+                toastr.error('Error uploading files. Please try again.');
+            } finally {
+                loadingSpinner.style.display = 'none';
+            }
+        }
+
+        function updateUploadedList(type, name) {
+            const list = document.querySelector(`#uploaded${type.charAt(0).toUpperCase() + type.slice(1)}sList ul`);
+            const listItem = document.createElement('li');
+            listItem.textContent = name;
+            list.appendChild(listItem);
+        }
+
+        function uploadAirlineFiles() {
+            uploadFiles('airline');
+        }
+
+        function uploadAirportFiles() {
+            uploadFiles('airport');
+        }
+
+        async function uploadFileToS3(file, key) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('key', key);
+
+            try {
+                const response = await axios.post('/upload-to-s3', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+                return response.data.url;
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                throw error;
+            }
+        }
+
+        function previewImage(input, previewId) {
+            const preview = document.getElementById(previewId);
+            const file = input.files[0];
+            const reader = new FileReader();
+
+            reader.onloadend = function () {
+                preview.src = reader.result;
+                preview.style.display = 'block';
+            }
+
+            if (file) {
+                if (file.type !== 'image/png') {
+                    toastr.error('Please select a PNG file.');
+                    input.value = '';
+                    preview.src = '';
+                    preview.style.display = 'none';
+                    return;
+                }
+                reader.readAsDataURL(file);
+            } else {
+                preview.src = "";
+                preview.style.display = 'none';
+            }
+        }
+
+        fetchAirlinesAndAirports();
+    </script>
+</body>
+
+</html>
