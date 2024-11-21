@@ -22,11 +22,11 @@
         }
 
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 40px auto;
             padding: 40px;
             background-color: #ffffff;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             border-radius: 12px;
         }
 
@@ -37,7 +37,7 @@
             font-size: 36px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 2px;
         }
 
         .upload-section {
@@ -64,7 +64,8 @@
         }
 
         select,
-        input[type="file"] {
+        input[type="file"],
+        textarea {
             width: 100%;
             padding: 14px;
             margin-bottom: 20px;
@@ -75,10 +76,16 @@
         }
 
         select:focus,
-        input[type="file"]:focus {
+        input[type="file"]:focus,
+        textarea:focus {
             outline: none;
             border-color: #3498db;
             box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
         }
 
         button {
@@ -228,6 +235,9 @@
                     onchange="previewImage(this, 'airlineBackgroundPreview')">
             </div>
             <img id="airlineBackgroundPreview" class="preview-image" src="" alt="Airline Background Preview">
+            <textarea id="airlineDescription" placeholder="Description"></textarea>
+            <textarea id="airlineTrendingBio" placeholder="Trending Bio"></textarea>
+            <textarea id="airlinePerksBio" placeholder="Perks Bio"></textarea>
             <button onclick="uploadAirlineFiles()">Upload Airline Files</button>
             <div id="airlineLoadingSpinner" class="loading-spinner"></div>
             <div id="uploadedAirlinesList" class="uploaded-list">
@@ -251,6 +261,9 @@
                     onchange="previewImage(this, 'airportBackgroundPreview')">
             </div>
             <img id="airportBackgroundPreview" class="preview-image" src="" alt="Airport Background Preview">
+            <textarea id="airportDescription" placeholder="Description"></textarea>
+            <textarea id="airportTrendingBio" placeholder="Trending Bio"></textarea>
+            <textarea id="airportPerksBio" placeholder="Perks Bio"></textarea>
             <button onclick="uploadAirportFiles()">Upload Airport Files</button>
             <div id="airportLoadingSpinner" class="loading-spinner"></div>
             <div id="uploadedAirportsList" class="uploaded-list">
@@ -281,6 +294,42 @@
             "hideEasing": "linear",
             "showMethod": "fadeIn",
             "hideMethod": "fadeOut"
+        }
+
+        async function saveInfo(type) {
+            const id = document.getElementById(`${type}Select`).value;
+            const logoUrl = document.getElementById(`${type}LogoPreview`).src;
+            const backgroundUrl = document.getElementById(`${type}BackgroundPreview`).src;
+            const description = document.getElementById(`${type}Description`).value;
+            const trendingBio = document.getElementById(`${type}TrendingBio`).value;
+            const perksBio = document.getElementById(`${type}PerksBio`).value;
+
+            if (!id || !logoUrl || !backgroundUrl || !description || !trendingBio || !perksBio) {
+                toastr.warning('Please fill in all fields and upload both images.');
+                return;
+            }
+
+            // Rest of the function remains the same
+            try {
+                const response = await axios.post('/save-info', {
+                    type,
+                    id,
+                    logoUrl,
+                    backgroundUrl,
+                    description,
+                    trendingBio,
+                    perksBio
+                });
+
+                if (response.data.success) {
+                    toastr.success('Information saved successfully!');
+                } else {
+                    toastr.error('Failed to save information. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error saving information:', error);
+                toastr.error('Error saving information. Please try again.');
+            }
         }
 
         async function fetchAirlinesAndAirports() {
@@ -314,12 +363,16 @@
             const logo = document.getElementById(`${type}Logo`).files[0];
             const background = document.getElementById(`${type}Background`).files[0];
             const id = select.value;
+            const description = document.getElementById(`${type}Description`).value;
+            const trendingBio = document.getElementById(`${type}TrendingBio`).value;
+            const perksBio = document.getElementById(`${type}PerksBio`).value;
 
-            if (!logo || !background) {
-                toastr.warning('Please select both logo and background files.');
+            if (!id || !logo || !background || !description || !trendingBio || !perksBio) {
+                toastr.warning('Please fill in all fields and select both logo and background files.');
                 return;
             }
 
+            // Rest of the function remains the same
             if (logo.type !== 'image/png' || background.type !== 'image/png') {
                 toastr.error('Please upload PNG files only.');
                 return;
@@ -348,10 +401,11 @@
                 // Reset the file inputs and previews
                 document.getElementById(`${type}Logo`).value = '';
                 document.getElementById(`${type}Background`).value = '';
-                document.getElementById(`${type}LogoPreview`).src = '';
+                document.getElementById(`${type}LogoPreview`).src = logoUrl;
                 document.getElementById(`${type}LogoPreview`).style.display = 'none';
-                document.getElementById(`${type}BackgroundPreview`).src = '';
+                document.getElementById(`${type}BackgroundPreview`).src = backgroundUrl;
                 document.getElementById(`${type}BackgroundPreview`).style.display = 'none';
+                await saveInfo(type);
 
                 // Update the uploaded list
                 updateUploadedList(type, select.options[select.selectedIndex].text);
@@ -363,6 +417,7 @@
                 loadingSpinner.style.display = 'none';
             }
         }
+
 
         function updateUploadedList(type, name) {
             const list = document.querySelector(`#uploaded${type.charAt(0).toUpperCase() + type.slice(1)}sList ul`);

@@ -3,6 +3,7 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const AWS = require("aws-sdk");
+const axios = require("axios");
 require("dotenv").config();
 
 const app = express();
@@ -60,6 +61,43 @@ app.post("/upload-to-s3", upload.single("file"), async (req, res) => {
   } catch (error) {
     console.error("Error uploading file:", error);
     res.status(500).json({ success: false, error: "File upload failed" });
+  }
+});
+
+app.post("/save-info", express.json(), async (req, res) => {
+  try {
+    const {
+      id,
+      logoImage,
+      backgroundImage,
+      descriptionBio,
+      trendingBio,
+      perksBio,
+    } = req.body;
+
+    const url =
+      "https://airline-backend-c8p8.onrender.com/api/v1/airline-airport/update";
+    const data = {
+      id,
+      logoImage,
+      backgroundImage,
+      descriptionBio,
+      trendingBio,
+      perksBio,
+    };
+
+    const response = await axios.post(url, data);
+
+    if (response.data.success) {
+      res.json({ success: true, message: "Information saved successfully" });
+    } else {
+      res
+        .status(400)
+        .json({ success: false, message: "Failed to save information" });
+    }
+  } catch (error) {
+    console.error("Error saving information:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
 
