@@ -17,8 +17,8 @@ const s3 = new AWS.S3({
 // Set up multer for handling file uploads
 const upload = multer({ storage: multer.memoryStorage() });
 
-const uploadFileToS3 = (fileBuffer, fileName, folderName) => {
-  const key = `${folderName}/${fileName}`;
+const uploadFileToS3 = (fileBuffer, fileName) => {
+  const key = `${fileName}`;
 
   const uploadParams = {
     Bucket: "airlinereview",
@@ -55,7 +55,7 @@ app.post("/upload-to-s3", upload.single("file"), async (req, res) => {
   try {
     const file = req.file;
     const key = req.body.key;
-    const url = await uploadFileToS3(file.buffer, file.originalname, key);
+    const url = await uploadFileToS3(file.buffer, key);
     res.json({ success: true, url });
   } catch (error) {
     console.error("Error uploading file:", error);
