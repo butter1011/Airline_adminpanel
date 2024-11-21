@@ -70,18 +70,17 @@ app.post("/save-info", express.json(), async (req, res) => {
       id,
       logoImage,
       backgroundImage,
-      descriptionBio,
+      description,
       trendingBio,
       perksBio,
     } = req.body;
 
-    const url =
-      "https://airline-backend-c8p8.onrender.com/api/v1/airline-airport/update";
+    const url = `https://airline-backend-c8p8.onrender.com/api/v1/airline-airport/update`;
     const data = {
       id,
       logoImage,
       backgroundImage,
-      descriptionBio,
+      description,
       trendingBio,
       perksBio,
     };

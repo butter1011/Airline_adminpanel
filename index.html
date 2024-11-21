@@ -300,24 +300,23 @@
             const id = document.getElementById(`${type}Select`).value;
             const logoImage = document.getElementById(`${type}LogoPreview`).src;
             const backgroundImage = document.getElementById(`${type}BackgroundPreview`).src;
-            const descriptionBio = document.getElementById(`${type}descriptionBio`).value;
+            const description = document.getElementById(`${type}Description`).value;
             const trendingBio = document.getElementById(`${type}TrendingBio`).value;
             const perksBio = document.getElementById(`${type}PerksBio`).value;
 
-            if (!id || !logoImage || !backgroundImage || !descriptionBio || !trendingBio || !perksBio) {
+            if (!id || !logoImage || !backgroundImage || !description || !trendingBio || !perksBio) {
                 toastr.warning('Please fill in all fields and upload both images.');
                 return;
             }
 
-            // Rest of the function remains the same
             try {
                 const response = await axios.post('/save-info', {
                     id,
                     logoImage,
                     backgroundImage,
-                    descriptionBio,
+                    description,
                     trendingBio,
-                    perksBio
+                    perksBio,
                 });
 
                 if (response.data.success) {
@@ -389,8 +388,8 @@
             loadingSpinner.style.display = 'block';
 
             try {
-                const logoUrl = await uploadFileToS3(logo, logoKey);
-                const backgroundUrl = await uploadFileToS3(background, backgroundKey);
+                const logoImage = await uploadFileToS3(logo, logoKey);
+                const backgroundImage = await uploadFileToS3(background, backgroundKey);
 
                 uploadedFiles.add(logoKey);
                 uploadedFiles.add(backgroundKey);
@@ -400,9 +399,9 @@
                 // Reset the file inputs and previews
                 document.getElementById(`${type}Logo`).value = '';
                 document.getElementById(`${type}Background`).value = '';
-                document.getElementById(`${type}LogoPreview`).src = logoUrl;
+                document.getElementById(`${type}LogoPreview`).src = logoImage;
                 document.getElementById(`${type}LogoPreview`).style.display = 'none';
-                document.getElementById(`${type}BackgroundPreview`).src = backgroundUrl;
+                document.getElementById(`${type}BackgroundPreview`).src = backgroundImage;
                 document.getElementById(`${type}BackgroundPreview`).style.display = 'none';
                 await saveInfo(type);
 
