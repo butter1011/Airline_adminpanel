@@ -27,7 +27,7 @@ const uploadFileToS3 = (fileBuffer, fileName) => {
     Body: fileBuffer,
     ACL: "public-read",
   };
-  
+
   return new Promise((resolve, reject) => {
     s3.upload(uploadParams, (err, data) => {
       if (err) {
@@ -80,7 +80,7 @@ app.post("/save-info", express.json(), async (req, res) => {
       id,
       logoImage,
       backgroundImage,
-      description,
+      descriptionBio: description,
       trendingBio,
       perksBio,
     };
