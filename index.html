@@ -298,13 +298,13 @@
 
         async function saveInfo(type) {
             const id = document.getElementById(`${type}Select`).value;
-            const logoUrl = document.getElementById(`${type}LogoPreview`).src;
-            const backgroundUrl = document.getElementById(`${type}BackgroundPreview`).src;
-            const description = document.getElementById(`${type}Description`).value;
+            const logoImage = document.getElementById(`${type}LogoPreview`).src;
+            const backgroundImage = document.getElementById(`${type}BackgroundPreview`).src;
+            const descriptionBio = document.getElementById(`${type}descriptionBio`).value;
             const trendingBio = document.getElementById(`${type}TrendingBio`).value;
             const perksBio = document.getElementById(`${type}PerksBio`).value;
 
-            if (!id || !logoUrl || !backgroundUrl || !description || !trendingBio || !perksBio) {
+            if (!id || !logoImage || !backgroundImage || !descriptionBio || !trendingBio || !perksBio) {
                 toastr.warning('Please fill in all fields and upload both images.');
                 return;
             }
@@ -312,11 +312,10 @@
             // Rest of the function remains the same
             try {
                 const response = await axios.post('/save-info', {
-                    type,
                     id,
-                    logoUrl,
-                    backgroundUrl,
-                    description,
+                    logoImage,
+                    backgroundImage,
+                    descriptionBio,
                     trendingBio,
                     perksBio
                 });
@@ -378,8 +377,8 @@
                 return;
             }
 
-            const logoKey = `airlineairport/logos/${id}_logo.png`;
-            const backgroundKey = `airlineairport/backgrounds/${id}_background.png`;
+            const logoKey = `airlineairport/logos/${id}.png`;
+            const backgroundKey = `airlineairport/backgrounds/${id}.png`;
 
             if (uploadedFiles.has(logoKey) || uploadedFiles.has(backgroundKey)) {
                 toastr.info('Files for this item have already been uploaded.');
