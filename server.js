@@ -75,7 +75,7 @@ app.post("/save-info", express.json(), async (req, res) => {
       perksBio,
     } = req.body;
 
-    const url = `https://airline-backend-c8p8.onrender.com/api/v1/airline-airport/update`;
+    const url = `https://airlinereview-b835007a0bbc.herokuapp.com/api/v1/airline-airport/update`;
     const data = {
       id,
       logoImage,
