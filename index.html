@@ -362,11 +362,11 @@
             const logo = document.getElementById(`${type}Logo`).files[0];
             const background = document.getElementById(`${type}Background`).files[0];
             const id = select.value;
-            const description = document.getElementById(`${type}Description`).value;
+            const description = document.getElementById(`${type}Description`).value || null;
             const trendingBio = document.getElementById(`${type}TrendingBio`).value || null;
             const perksBio = document.getElementById(`${type}PerksBio`).value || null;
 
-            if (!id || !logo || !description) {
+            if (!id || !logo) {
                 toastr.warning('Please fill in required fields (ID, Logo, Description) and select a logo file.');
                 return;
             }
