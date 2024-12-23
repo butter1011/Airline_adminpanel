@@ -10,7 +10,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    <link rel="shortcut icon" href="https://airlinereview.s3.eu-north-1.amazonaws.com/airlineairport/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="https://airlinereview.s3.eu-north-1.amazonaws.com/airlineairport/favicon.ico"
+        type="image/x-icon">
     <style>
         body {
             font-family: 'Roboto', sans-serif;
@@ -365,21 +366,20 @@
             const trendingBio = document.getElementById(`${type}TrendingBio`).value;
             const perksBio = document.getElementById(`${type}PerksBio`).value;
 
-            if (!id || !logo || !background || !description || !trendingBio || !perksBio) {
-                toastr.warning('Please fill in all fields and select both logo and background files.');
+            if (!id || !logo || !description || !trendingBio || !perksBio) {
+                toastr.warning('Please fill in all required fields and select a logo file.');
                 return;
             }
 
-            // Rest of the function remains the same
-            if (logo.type !== 'image/png' || background.type !== 'image/png') {
+            if (logo.type !== 'image/png' || (background && background.type !== 'image/png')) {
                 toastr.error('Please upload PNG files only.');
                 return;
             }
 
             const logoKey = `airlineairport/logos/${id}.png`;
-            const backgroundKey = `airlineairport/backgrounds/${id}.png`;
+            const backgroundKey = background ? `airlineairport/backgrounds/${id}.png` : null;
 
-            if (uploadedFiles.has(logoKey) || uploadedFiles.has(backgroundKey)) {
+            if (uploadedFiles.has(logoKey) || (backgroundKey && uploadedFiles.has(backgroundKey))) {
                 toastr.info('Files for this item have already been uploaded.');
                 return;
             }
@@ -389,10 +389,14 @@
 
             try {
                 const logoImage = await uploadFileToS3(logo, logoKey);
-                const backgroundImage = await uploadFileToS3(background, backgroundKey);
+                let backgroundImage = null;
+
+                if (background) {
+                    backgroundImage = await uploadFileToS3(background, backgroundKey);
+                    uploadedFiles.add(backgroundKey);
+                }
 
                 uploadedFiles.add(logoKey);
-                uploadedFiles.add(backgroundKey);
 
                 toastr.success('Files uploaded successfully!');
 
@@ -401,8 +405,12 @@
                 document.getElementById(`${type}Background`).value = '';
                 document.getElementById(`${type}LogoPreview`).src = logoImage;
                 document.getElementById(`${type}LogoPreview`).style.display = 'none';
-                document.getElementById(`${type}BackgroundPreview`).src = backgroundImage;
-                document.getElementById(`${type}BackgroundPreview`).style.display = 'none';
+
+                if (backgroundImage) {
+                    document.getElementById(`${type}BackgroundPreview`).src = backgroundImage;
+                    document.getElementById(`${type}BackgroundPreview`).style.display = 'none';
+                }
+
                 await saveInfo(type);
 
                 // Update the uploaded list
