@@ -362,12 +362,12 @@
             const logo = document.getElementById(`${type}Logo`).files[0];
             const background = document.getElementById(`${type}Background`).files[0];
             const id = select.value;
-            const description = document.getElementById(`${type}Description`).value || null;
-            const trendingBio = document.getElementById(`${type}TrendingBio`).value || null;
-            const perksBio = document.getElementById(`${type}PerksBio`).value || null;
+            const description = document.getElementById(`${type}Description`).value;
+            const trendingBio = document.getElementById(`${type}TrendingBio`).value;
+            const perksBio = document.getElementById(`${type}PerksBio`).value;
 
             if (!id || !logo) {
-                toastr.warning('Please fill in required fields (ID, Logo, Description) and select a logo file.');
+                toastr.warning('Please select an ID and upload a logo file.');
                 return;
             }
 
@@ -398,21 +398,33 @@
 
                 uploadedFiles.add(logoKey);
 
-                toastr.success('Files uploaded successfully!');
+                const data = {
+                    id,
+                    logoImage,
+                    backgroundImage,
+                    description: description || null,
+                    trendingBio: trendingBio || null,
+                    perksBio: perksBio || null
+                };
 
-                document.getElementById(`${type}Logo`).value = '';
-                document.getElementById(`${type}Background`).value = '';
-                document.getElementById(`${type}LogoPreview`).src = logoImage;
-                document.getElementById(`${type}LogoPreview`).style.display = 'none';
+                const response = await axios.post('/save-info', data);
 
-                if (backgroundImage) {
-                    document.getElementById(`${type}BackgroundPreview`).src = backgroundImage;
+                if (response.data.success) {
+                    toastr.success('Files and information uploaded successfully!');
+                    
+                    // Reset form
+                    document.getElementById(`${type}Logo`).value = '';
+                    document.getElementById(`${type}Background`).value = '';
+                    document.getElementById(`${type}Description`).value = '';
+                    document.getElementById(`${type}TrendingBio`).value = '';
+                    document.getElementById(`${type}PerksBio`).value = '';
+                    document.getElementById(`${type}LogoPreview`).style.display = 'none';
                     document.getElementById(`${type}BackgroundPreview`).style.display = 'none';
+
+                    updateUploadedList(type, select.options[select.selectedIndex].text);
+                } else {
+                    toastr.error('Failed to save information. Please try again.');
                 }
-
-                await saveInfo(type);
-
-                updateUploadedList(type, select.options[select.selectedIndex].text);
 
             } catch (error) {
                 console.error('Error uploading files:', error);
@@ -421,7 +433,6 @@
                 loadingSpinner.style.display = 'none';
             }
         }
-
 
         function updateUploadedList(type, name) {
             const list = document.querySelector(`#uploaded${type.charAt(0).toUpperCase() + type.slice(1)}sList ul`);
