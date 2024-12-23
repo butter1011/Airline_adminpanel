@@ -301,12 +301,12 @@
             const id = document.getElementById(`${type}Select`).value;
             const logoImage = document.getElementById(`${type}LogoPreview`).src;
             const backgroundImage = document.getElementById(`${type}BackgroundPreview`).src;
-            const description = document.getElementById(`${type}Description`).value;
-            const trendingBio = document.getElementById(`${type}TrendingBio`).value;
-            const perksBio = document.getElementById(`${type}PerksBio`).value;
+            const description = document.getElementById(`${type}Description`).value || null;
+            const trendingBio = document.getElementById(`${type}TrendingBio`).value || null;
+            const perksBio = document.getElementById(`${type}PerksBio`).value || null;
 
-            if (!id || !logoImage || !backgroundImage || !description || !trendingBio || !perksBio) {
-                toastr.warning('Please fill in all fields and upload both images.');
+            if (!id || !logoImage) {
+                toastr.warning('Please fill in required fields (ID, Logo, Description).');
                 return;
             }
 
@@ -314,7 +314,7 @@
                 const response = await axios.post('/save-info', {
                     id,
                     logoImage,
-                    backgroundImage,
+                    backgroundImage: backgroundImage || null,
                     description,
                     trendingBio,
                     perksBio,
@@ -363,11 +363,11 @@
             const background = document.getElementById(`${type}Background`).files[0];
             const id = select.value;
             const description = document.getElementById(`${type}Description`).value;
-            const trendingBio = document.getElementById(`${type}TrendingBio`).value;
-            const perksBio = document.getElementById(`${type}PerksBio`).value;
+            const trendingBio = document.getElementById(`${type}TrendingBio`).value || null;
+            const perksBio = document.getElementById(`${type}PerksBio`).value || null;
 
-            if (!id || !logo || !description || !trendingBio || !perksBio) {
-                toastr.warning('Please fill in all required fields and select a logo file.');
+            if (!id || !logo || !description) {
+                toastr.warning('Please fill in required fields (ID, Logo, Description) and select a logo file.');
                 return;
             }
 
@@ -400,7 +400,6 @@
 
                 toastr.success('Files uploaded successfully!');
 
-                // Reset the file inputs and previews
                 document.getElementById(`${type}Logo`).value = '';
                 document.getElementById(`${type}Background`).value = '';
                 document.getElementById(`${type}LogoPreview`).src = logoImage;
@@ -413,7 +412,6 @@
 
                 await saveInfo(type);
 
-                // Update the uploaded list
                 updateUploadedList(type, select.options[select.selectedIndex].text);
 
             } catch (error) {
