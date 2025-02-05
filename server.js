@@ -15,6 +15,15 @@ const s3 = new AWS.S3({
   region: process.env.AWS_REGION,
 });
 
+// Serve static files with correct MIME types
+app.use(express.static(path.join(__dirname), {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css');
+    }
+  }
+}));
+
 // Set up multer for handling file uploads
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -22,7 +31,7 @@ const uploadFileToS3 = (fileBuffer, fileName) => {
   const key = `${fileName}`;
 
   const uploadParams = {
-    Bucket: "airlinereview",
+    Bucket: "airsharereview",
     Key: key,
     Body: fileBuffer,
     ACL: "public-read",
