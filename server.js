@@ -16,7 +16,44 @@ const s3 = new AWS.S3({
 });
 
 // Serve static files from the public directory
-app.use(express.static('public'));
+app.use((req, res, next) => {
+  // Set correct MIME types for different file extensions
+  const mimeTypes = {
+    ".css": "text/css",
+    ".js": "application/javascript",
+    ".html": "text/html",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+  };
+
+  const ext = path.extname(req.url);
+  if (mimeTypes[ext]) {
+    res.setHeader("Content-Type", mimeTypes[ext]);
+  }
+  next();
+});
+
+// Update static file serving with MIME type options
+app.use(
+  express.static("public", {
+    setHeaders: (res, path) => {
+      const ext = path.split(".").pop();
+      switch (ext) {
+        case "css":
+          res.setHeader("Content-Type", "text/css");
+          break;
+        case "js":
+          res.setHeader("Content-Type", "application/javascript");
+          break;
+        case "html":
+          res.setHeader("Content-Type", "text/html");
+          break;
+      }
+    },
+  })
+);
 
 // Set up multer for handling file uploads
 const upload = multer({ storage: multer.memoryStorage() });
@@ -61,7 +98,7 @@ const uploadFileToS3 = (fileBuffer, fileName, folderName) => {
 
 // Serve the HTML file
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // Handle file upload
