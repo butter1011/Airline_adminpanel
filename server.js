@@ -56,7 +56,12 @@ app.use(
 );
 
 // Set up multer for handling file uploads
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 100MB limit
+  }
+});
 
 const uploadFileToS3 = (fileBuffer, fileName, folderName) => {
   const destination = `${folderName}/${fileName}`;

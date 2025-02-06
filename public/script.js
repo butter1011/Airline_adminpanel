@@ -240,23 +240,48 @@ const uploadAirportFiles = () => uploadFiles("airport");
  * @param {string} key - The S3 key for the file
  * @returns {Promise<string>} The URL of the uploaded file
  */
-async function uploadFileToS3(file, key) {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("key", key);
+const uploadFileToS3 = (fileBuffer, fileName, folderName) => {
+  const destination = `${folderName}/${fileName}`;
+  const fileExtension = path.extname(fileName).toLowerCase();
 
-  try {
-    const response = await axios.post("/upload-to-s3", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-    return response.data.url;
-  } catch (error) {
-    console.error("Error uploading file:", error);
-    throw error;
+  let contentType;
+  if (fileExtension === ".mp4" || fileExtension === ".mov") {
+    contentType = "video/mp4";
+  } else if (fileExtension === ".jpg" || fileExtension === ".jpeg") {
+    contentType = "image/jpeg";
+  } else if (fileExtension === ".png") {
+    contentType = "image/png";
+  } else {
+    contentType = "application/octet-stream";
   }
-}
+
+  const uploadParams = {
+    Bucket: "airsharereview",
+    Key: destination,
+    Body: fileBuffer,
+    ContentType: contentType,
+    ACL: "public-read",
+  };
+
+  const options = {
+    partSize: 10 * 1024 * 1024, // 10MB chunks
+    queueSize: 1,
+  };
+
+  return new Promise((resolve, reject) => {
+    s3.upload(uploadParams, options, (err, data) => {
+      if (err) {
+        console.log("Error", err);
+        reject(new Error(`Failed to upload file: ${err}`));
+      }
+      if (data) {
+        console.log("Uploaded in", data.Location);
+        const url = `https://d2ktq59qt1f9bd.cloudfront.net/${destination}`;
+        resolve(url);
+      }
+    });
+  });
+};
 
 /**
  * Previews an image before upload
@@ -295,9 +320,9 @@ function previewImage(input, previewId) {
  * @returns {boolean} Whether the file size is valid
  */
 function validateFileSize(file) {
-  const MAX_SIZE = 50 * 1024 * 1024; // 50MB
+  const MAX_SIZE = 50 * 1024 * 1024; // 100MB
   if (file.size > MAX_SIZE) {
-    toastr.error("File size must be less than 50MB");
+    toastr.error("File size must be less than 100MB");
     return false;
   }
   return true;
