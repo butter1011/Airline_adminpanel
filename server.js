@@ -15,16 +15,8 @@ const s3 = new AWS.S3({
   region: process.env.AWS_REGION,
 });
 
-// Serve static files with correct MIME types
-app.use(
-  express.static(path.join(__dirname), {
-    setHeaders: (res, path) => {
-      if (path.endsWith(".css")) {
-        res.setHeader("Content-Type", "text/css");
-      }
-    },
-  })
-);
+// Serve static files from the public directory
+app.use(express.static('public'));
 
 // Set up multer for handling file uploads
 const upload = multer({ storage: multer.memoryStorage() });
@@ -69,7 +61,7 @@ const uploadFileToS3 = (fileBuffer, fileName, folderName) => {
 
 // Serve the HTML file
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Handle file upload
