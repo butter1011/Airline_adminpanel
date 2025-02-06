@@ -2,6 +2,7 @@ let airlines = [];
 let airports = [];
 let uploadedFiles = new Set();
 
+// Configure toastr notification settings
 toastr.options = {
   closeButton: true,
   debug: false,
@@ -20,6 +21,11 @@ toastr.options = {
   hideMethod: "fadeOut",
 };
 
+/**
+ * Saves information for a given entity type
+ * @param {string} type - The type of entity (airline/airport)
+ * @returns {Promise<void>}
+ */
 async function saveInfo(type) {
   const id = document.getElementById(`${type}Select`).value;
   const logoImage = document.getElementById(`${type}LogoPreview`).src;
@@ -27,10 +33,11 @@ async function saveInfo(type) {
     `${type}BackgroundPreview`
   ).src;
   const description =
-    document.getElementById(`${type}Description`).value || null;
+    document.getElementById(`${type}Description`).value?.trim() || null;
   const trendingBio =
-    document.getElementById(`${type}TrendingBio`).value || null;
-  const perksBio = document.getElementById(`${type}PerksBio`).value || null;
+    document.getElementById(`${type}TrendingBio`).value?.trim() || null;
+  const perksBio =
+    document.getElementById(`${type}PerksBio`).value?.trim() || null;
 
   if (!id || !logoImage) {
     toastr.warning("Please fill in required fields (ID, Logo, Description).");
@@ -58,26 +65,53 @@ async function saveInfo(type) {
   }
 }
 
-async function fetchAirlinesAndAirports() {
+/**
+ * Fetches airlines and airports data from the API
+ * @returns {Promise<void>}
+ */
+function fetchAirlinesAndAirports() {
+  showLoadingSpinner();
   try {
-    const response = await axios.get(
-      "https://airlinereview-b835007a0bbc.herokuapp.com/api/v2/airline-airport/lists"
-    );
-    const { data } = response.data;
+    axios
+      .get(
+        "https://airlinereview-b835007a0bbc.herokuapp.com/api/v2/airline-airport/lists"
+      )
+      .then((response) => {
+        const { data } = response.data;
+        airlines = data.airlines;
+        airports = data.airports;
 
-    airlines = data.airlines;
-    airports = data.airports;
-
-    populateSelect("airlineSelect", airlines);
-    populateSelect("airportSelect", airports);
+        // Update all select elements with unique IDs
+        populateSelect("airlineSelect", airlines);
+        populateSelect("airportSelect", airports);
+        populateSelect("airportToSelect", airports);
+        populateSelect("airportFromSelect", airports);
+        populateSelect("airlineTravelSelect", airlines);
+      })
+      .catch((error) => {
+        console.error("Error fetching data:", error);
+        toastr.error(
+          "Failed to fetch airlines and airports. Please try again."
+        );
+      })
+      .finally(() => {
+        hideLoadingSpinner();
+      });
   } catch (error) {
-    console.error("Error fetching data:", error);
-    toastr.error("Failed to fetch airlines and airports. Please try again.");
+    console.error("Error:", error);
+    toastr.error("An error occurred. Please try again.");
+    hideLoadingSpinner();
   }
 }
 
+/**
+ * Populates a select element with items
+ * @param {string} selectId - The ID of the select element
+ * @param {Array} items - Array of items to populate
+ */
 function populateSelect(selectId, items) {
   const select = document.getElementById(selectId);
+  select.innerHTML = ""; // Clear existing options
   items.forEach((item) => {
     const option = document.createElement("option");
     option.value = item._id;
@@ -86,14 +120,23 @@ function populateSelect(selectId, items) {
   });
 }
 
+/**
+ * Uploads files and related information
+ * @param {string} type - The type of entity (airline/airport)
+ * @returns {Promise<void>}
+ */
 async function uploadFiles(type) {
   const select = document.getElementById(`${type}Select`);
   const logo = document.getElementById(`${type}Logo`).files[0];
   const background = document.getElementById(`${type}Background`).files[0];
   const id = select.value;
-  const description = document.getElementById(`${type}Description`).value;
-  const trendingBio = document.getElementById(`${type}TrendingBio`).value;
-  const perksBio = document.getElementById(`${type}PerksBio`).value;
+  const description = document
+    .getElementById(`${type}Description`)
+    .value?.trim();
+  const trendingBio = document
+    .getElementById(`${type}TrendingBio`)
+    .value?.trim();
+  const perksBio = document.getElementById(`${type}PerksBio`).value?.trim();
 
   if (!id || !logo) {
     toastr.warning("Please select an ID and upload a logo file.");
@@ -109,9 +152,7 @@ async function uploadFiles(type) {
   }
 
   const logoKey = `logos/${id}.png`;
-  const backgroundKey = background
-    ? `backgrounds/${id}.png`
-    : null;
+  const backgroundKey = background ? `backgrounds/${id}.png` : null;
 
   if (
     uploadedFiles.has(logoKey) ||
@@ -121,9 +162,7 @@ async function uploadFiles(type) {
     return;
   }
 
-  const loadingSpinner = document.getElementById(`${type}LoadingSpinner`);
-  loadingSpinner.style.display = "block";
-
+  showLoadingSpinner();
   try {
     const logoImage = await uploadFileToS3(logo, logoKey);
     let backgroundImage = null;
@@ -135,30 +174,18 @@ async function uploadFiles(type) {
 
     uploadedFiles.add(logoKey);
 
-    const data = {
+    const response = await axios.post("/save-info", {
       id,
       logoImage,
-      backgroundImage: background || null,
+      backgroundImage,
       description: description || null,
       trendingBio: trendingBio || null,
       perksBio: perksBio || null,
-    };
-
-    const response = await axios.post("/save-info", data);
+    });
 
     if (response.data.success) {
       toastr.success("Files and information uploaded successfully!");
-
-      // Reset form
-      document.getElementById(`${type}Logo`).value = "";
-      document.getElementById(`${type}Background`).value = "";
-      document.getElementById(`${type}Description`).value = "";
-      document.getElementById(`${type}TrendingBio`).value = "";
-      document.getElementById(`${type}PerksBio`).value = "";
-      document.getElementById(`${type}LogoPreview`).style.display = "none";
-      document.getElementById(`${type}BackgroundPreview`).style.display =
-        "none";
-
+      resetForm(type);
       updateUploadedList(type, select.options[select.selectedIndex].text);
     } else {
       toastr.error("Failed to save information. Please try again.");
@@ -167,27 +194,52 @@ async function uploadFiles(type) {
     console.error("Error uploading files:", error);
     toastr.error("Error uploading files. Please try again.");
   } finally {
-    loadingSpinner.style.display = "none";
+    hideLoadingSpinner();
   }
 }
 
-function updateUploadedList(type, name) {
+/**
+ * Resets form fields after successful upload
+ * @param {string} type - The type of entity (airline/airport)
+ */
+function resetForm(type) {
+  document.getElementById(`${type}Logo`).value = "";
+  document.getElementById(`${type}Background`).value = "";
+  document.getElementById(`${type}Description`).value = "";
+  document.getElementById(`${type}TrendingBio`).value = "";
+  document.getElementById(`${type}PerksBio`).value = "";
+  document.getElementById(`${type}LogoPreview`).style.display = "none";
+  document.getElementById(`${type}BackgroundPreview`).style.display = "none";
+}
+
+/**
+ * Updates the uploaded items list
+ * @param {string} type - The type of entity (airline/airport)
+ * @param {string} name - The name of the uploaded item
+ */
+function updateUploadedList(type, items) {
   const list = document.querySelector(
     `#uploaded${type.charAt(0).toUpperCase() + type.slice(1)}sList ul`
   );
-  const listItem = document.createElement("li");
-  listItem.textContent = name;
-  list.appendChild(listItem);
+  if (!list) return;
+
+  list.innerHTML = ""; // Clear existing items
+  items.forEach((item) => {
+    const listItem = document.createElement("li");
+    listItem.textContent = item.name;
+    list.appendChild(listItem);
+  });
 }
 
-function uploadAirlineFiles() {
-  uploadFiles("airline");
-}
+const uploadAirlineFiles = () => uploadFiles("airline");
+const uploadAirportFiles = () => uploadFiles("airport");
 
-function uploadAirportFiles() {
-  uploadFiles("airport");
-}
-
+/**
+ * Uploads a file to S3
+ * @param {File} file - The file to upload
+ * @param {string} key - The S3 key for the file
+ * @returns {Promise<string>} The URL of the uploaded file
+ */
 async function uploadFileToS3(file, key) {
   const formData = new FormData();
   formData.append("file", file);
@@ -206,106 +258,540 @@ async function uploadFileToS3(file, key) {
   }
 }
 
+/**
+ * Previews an image before upload
+ * @param {HTMLInputElement} input - The file input element
+ * @param {string} previewId - The ID of the preview element
+ */
 function previewImage(input, previewId) {
   const preview = document.getElementById(previewId);
   const file = input.files[0];
-  const reader = new FileReader();
 
-  reader.onloadend = function () {
+  if (!file) {
+    preview.src = "";
+    preview.style.display = "none";
+    return;
+  }
+
+  if (file.type !== "image/png") {
+    toastr.error("Please select a PNG file.");
+    input.value = "";
+    preview.src = "";
+    preview.style.display = "none";
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onloadend = () => {
     preview.src = reader.result;
     preview.style.display = "block";
   };
-
-  if (file) {
-    if (file.type !== "image/png") {
-      toastr.error("Please select a PNG file.");
-      input.value = "";
-      preview.src = "";
-      preview.style.display = "none";
-      return;
-    }
-    reader.readAsDataURL(file);
-  } else {
-    preview.src = "";
-    preview.style.display = "none";
-  }
+  reader.readAsDataURL(file);
 }
 
-document.querySelectorAll(".sidebar-tabs li").forEach((tab) => {
-  tab.addEventListener("click", () => {
-    // Remove active class from all tabs
-    document
-      .querySelectorAll(".sidebar-tabs li")
-      .forEach((t) => t.classList.remove("active"));
-    document
-      .querySelectorAll(".tab-content")
-      .forEach((content) => content.classList.remove("active"));
-
-    // Add active class to clicked tab
-    tab.classList.add("active");
-
-    // Show corresponding content
-    const tabId = tab.getAttribute("data-tab");
-    document.getElementById(tabId).classList.add("active");
-  });
-});
-
+/**
+ * Validates file size
+ * @param {File} file - The file to validate
+ * @returns {boolean} Whether the file size is valid
+ */
 function validateFileSize(file) {
-  const maxSize = 50 * 1024 * 1024; // 50MB in bytes
-  if (file.size > maxSize) {
+  const MAX_SIZE = 50 * 1024 * 1024; // 50MB
+  if (file.size > MAX_SIZE) {
     toastr.error("File size must be less than 50MB");
     return false;
   }
   return true;
 }
 
+/**
+ * Previews multiple media files
+ * @param {HTMLInputElement} input - The file input element
+ * @param {string} previewContainerId - The ID of the preview container
+ */
 function previewMultipleMedia(input, previewContainerId) {
   const previewContainer = document.getElementById(previewContainerId);
-  previewContainer.innerHTML = "";
+  const existingFiles = Array.from(previewContainer.children);
+  const fileArray = [];
 
-  if (input.files) {
-    for (let i = 0; i < input.files.length; i++) {
-      const file = input.files[i];
+  if (!input.files) return;
 
-      if (!validateFileSize(file)) {
-        input.value = "";
-        previewContainer.innerHTML = "";
-        return;
+  Array.from(input.files).forEach((file) => {
+    if (!validateFileSize(file)) return;
+
+    fileArray.push(file);
+    const reader = new FileReader();
+    const mediaElement = document.createElement(
+      file.type.startsWith("image/") ? "img" : "video"
+    );
+
+    reader.onload = (e) => {
+      mediaElement.src = e.target.result;
+      mediaElement.className = "preview-media";
+      if (file.type.startsWith("video/")) {
+        mediaElement.controls = true;
       }
 
-      const reader = new FileReader();
-      const mediaElement = document.createElement(
-        file.type.startsWith("image/") ? "img" : "video"
-      );
+      const mediaWrapper = document.createElement("div");
+      mediaWrapper.className = "media-wrapper";
 
-      reader.onload = function (e) {
-        if (file.type.startsWith("image/")) {
-          mediaElement.src = e.target.result;
-          mediaElement.className = "preview-media";
-        } else if (file.type.startsWith("video/")) {
-          mediaElement.src = e.target.result;
-          mediaElement.controls = true;
-          mediaElement.className = "preview-media";
+      const removeBtn = document.createElement("button");
+      removeBtn.innerHTML = "×";
+      removeBtn.className = "remove-media";
+      removeBtn.onclick = () => {
+        const index = fileArray.indexOf(file);
+        if (index > -1) {
+          fileArray.splice(index, 1);
         }
-
-        const mediaWrapper = document.createElement("div");
-        mediaWrapper.className = "media-wrapper";
-
-        const removeBtn = document.createElement("button");
-        removeBtn.innerHTML = "×";
-        removeBtn.className = "remove-media";
-        removeBtn.onclick = function () {
-          mediaWrapper.remove();
-        };
-
-        mediaWrapper.appendChild(mediaElement);
-        mediaWrapper.appendChild(removeBtn);
-        previewContainer.appendChild(mediaWrapper);
+        mediaWrapper.remove();
       };
 
-      reader.readAsDataURL(file);
+      const fileName = document.createElement("div");
+      fileName.className = "file-name";
+      fileName.textContent = file.name;
+
+      mediaWrapper.append(mediaElement, removeBtn, fileName);
+      previewContainer.appendChild(mediaWrapper);
+    };
+
+    reader.readAsDataURL(file);
+  });
+
+  existingFiles.forEach((file) => previewContainer.appendChild(file));
+  return fileArray;
+}
+// Initialize application
+document.addEventListener("DOMContentLoaded", () => {
+  fetchAirlinesAndAirports();
+
+  // Set default selections
+  document.getElementById("airlineReview").checked = true;
+
+  // Initialize sidebar tabs
+  document.querySelectorAll(".sidebar-tabs li").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      document
+        .querySelectorAll(".sidebar-tabs li")
+        .forEach((t) => t.classList.remove("active"));
+      document
+        .querySelectorAll(".tab-content")
+        .forEach((content) => content.classList.remove("active"));
+
+      tab.classList.add("active");
+      const tabId = tab.getAttribute("data-tab");
+      document.getElementById(tabId).classList.add("active");
+    });
+  });
+
+  document.querySelectorAll('input[name="reviewType"]').forEach((radio) => {
+    radio.addEventListener("change", (e) => {
+      const airlineForm = document.querySelector(".review-form");
+      const airportForm = document.querySelector(".airport-review-form");
+
+      if (e.target.value === "airport") {
+        airlineForm.style.display = "none";
+        if (!airportForm) {
+          const newForm = `
+            <div class="airport-review-form review-form">
+              <div class="file-input-wrapper">
+                <div class="file-input-button">Choose Multiple Media Files (Max 50MB each)</div>
+                <input type="file" id="airportReviewMedia" accept="image/*,video/*" multiple onchange="previewMultipleMedia(this, 'airportReviewMediaPreview')">
+              </div>
+              <div class="form-group">
+                <label for="airportReviewAirportSelect" class="form-label">Departure Airport:</label>
+                <select id="airportReviewAirportSelect" class="form-select"></select>
+              </div>
+              <div class="form-group">
+                <label for="airportReviewAirlineSelect" class="form-label">Airline:</label>
+                <select id="airportReviewAirlineSelect" class="form-select"></select>
+              </div>
+              <div id="airportReviewMediaPreview" class="media-preview"></div>
+              <div class="form-group">
+                <label class="form-label">Travel Class:</label>
+                <div class="radio-group">
+                    <div class="radio-item">
+                        <input type="radio" id="airport_business" name="classTravel" value="Business">
+                        <label for="airport_business">Business Class</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" id="airport_premium" name="classTravel" value="Premium Economy">
+                        <label for="airport_premium">Premium Economy</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" id="airport_economy" name="classTravel" value="Economy" checked>
+                        <label for="airport_economy">Economy Class</label>
+                    </div>
+                </div>
+              </div>
+  
+              <div class="form-group">
+                <label class="form-label">Accessibility:</label>
+                <div class="checkbox-group">
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="airport_wheelchairAccess" name="accessibility">
+                    <label for="airport_wheelchairAccess">Wheelchair Access</label>
+                  </div>
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="airport_specialAssistance" name="accessibility">
+                    <label for="airport_specialAssistance">Special Assistance</label>
+                  </div>
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="airport_elevators" name="accessibility">
+                    <label for="airport_elevators">Elevators/Lifts</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Wait Times:</label>
+                <div class="checkbox-group">
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="airport_securityWait" name="waitTimes">
+                    <label for="airport_securityWait">Security Check</label>
+                  </div>
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="airport_immigrationWait" name="waitTimes">
+                    <label for="airport_immigrationWait">Immigration</label>
+                  </div>
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="airport_baggageWait" name="waitTimes">
+                    <label for="airport_baggageWait">Baggage Claim</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Staff Helpfulness:</label>
+                <div class="checkbox-group">
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="infoDesk" name="helpfulness">
+                    <label for="infoDesk">Information Desk</label>
+                  </div>
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="securityStaff" name="helpfulness">
+                    <label for="securityStaff">Security Staff</label>
+                  </div>
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="gateStaff" name="helpfulness">
+                    <label for="gateStaff">Gate Staff</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Ambience & Comfort:</label>
+                <div class="checkbox-group">
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="seating" name="ambienceComfort">
+                    <label for="seating">Seating Areas</label>
+                  </div>
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="cleanliness" name="ambienceComfort">
+                    <label for="cleanliness">Cleanliness</label>
+                  </div>
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="noise" name="ambienceComfort">
+                    <label for="noise">Noise Level</label>
+                  </div>
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="lighting" name="ambienceComfort">
+                    <label for="lighting">Lighting</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Food & Beverage:</label>
+                <div class="checkbox-group">
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="restaurants" name="foodBeverage">
+                    <label for="restaurants">Restaurant Variety</label>
+                  </div>
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="prices" name="foodBeverage">
+                    <label for="prices">Price Levels</label>
+                  </div>
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="quality" name="foodBeverage">
+                    <label for="quality">Food Quality</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Amenities:</label>
+                <div class="checkbox-group">
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="wifi" name="amenities">
+                    <label for="wifi">WiFi Service</label>
+                  </div>
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="shopping" name="amenities">
+                    <label for="shopping">Shopping Options</label>
+                  </div>
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="lounges" name="amenities">
+                    <label for="lounges">Airport Lounges</label>
+                  </div>
+                  <div class="checkbox-item">
+                    <input type="checkbox" id="charging" name="amenities">
+                    <label for="charging">Charging Stations</label>
+                  </div>
+                </div>
+              </div>
+  
+              <textarea id="airportReviewComment" placeholder="Write your comment here..." class="review-comment"></textarea>
+  
+              <button onclick="submitAirportReview()" class="submit-review-btn">Submit Airport Review</button>
+            </div>
+          `;
+          airlineForm.insertAdjacentHTML("afterend", newForm);
+          populateSelect("airportReviewAirportSelect", airports);
+          populateSelect("airportReviewAirlineSelect", airlines);
+        } else {
+          airportForm.style.display = "block";
+        }
+      } else {
+        airlineForm.style.display = "block";
+        if (document.querySelector(".airport-review-form")) {
+          document.querySelector(".airport-review-form").style.display = "none";
+        }
+      }
+    });
+  });
+});
+
+function showLoadingSpinner() {
+  console.log("showLoadingSpinner called----------------");
+  document.querySelector(".loading-spinner").style.display = "block";
+  document.querySelector(".loading-overlay").style.display = "block";
+}
+
+function hideLoadingSpinner() {
+  console.log("showLoadingSpinner called+++++++++++++++++");
+  document.querySelector(".loading-spinner").style.display = "none";
+  document.querySelector(".loading-overlay").style.display = "none";
+}
+
+async function submitReview() {
+  const reviewType = document.querySelector(
+    'input[name="reviewType"]:checked'
+  ).value;
+
+  if (reviewType === "airline") {
+    try {
+      showLoadingSpinner();
+
+      // Get all media wrapper elements from the preview container
+      const mediaWrappers = document.querySelectorAll(
+        "#reviewMediaPreview .media-wrapper"
+      );
+      let mediaUrls = [];
+
+      // Process each media wrapper
+      for (const wrapper of mediaWrappers) {
+        const mediaElement = wrapper.querySelector("img, video");
+        if (mediaElement) {
+          // Convert data URL to Blob
+          const response = await fetch(mediaElement.src);
+          const blob = await response.blob();
+
+          // Create file from blob
+          const fileName = wrapper.querySelector(".file-name").textContent;
+          const file = new File([blob], fileName, { type: blob.type });
+
+          // Upload to S3
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("folderName", "reviews");
+
+          try {
+            const response = await axios.post("/upload-to-s3", formData, {
+              headers: {
+                "Content-Type": "multipart/form-data",
+              },
+            });
+            mediaUrls.push(response.data.url);
+          } catch (error) {
+            console.error("Error uploading media:", error);
+            toastr.error(`Error uploading ${fileName}`);
+          }
+        }
+      }
+
+      const airlineData = {
+        reviewer: "678ddd644b12a3d332bcd9a9",
+        from: document.getElementById("airportFromSelect").value,
+        to: document.getElementById("airportToSelect").value,
+        airline: document.getElementById("airlineTravelSelect").value,
+        classTravel:
+          document.querySelector('input[name="classTravel"]:checked').value ??
+          "Economy",
+        imageUrls: mediaUrls,
+        departureArrival: Object.fromEntries(
+          Array.from(
+            document.querySelectorAll('input[name="departureArrival"]')
+          ).map((cb) => [cb.id, cb.checked])
+        ),
+        comfort: Object.fromEntries(
+          Array.from(document.querySelectorAll('input[name="comfort"]')).map(
+            (cb) => [cb.id, cb.checked]
+          )
+        ),
+        cleanliness: Object.fromEntries(
+          Array.from(
+            document.querySelectorAll('input[name="cleanliness"]')
+          ).map((cb) => [cb.id, cb.checked])
+        ),
+        onboardService: Object.fromEntries(
+          Array.from(
+            document.querySelectorAll('input[name="onboardService"]')
+          ).map((cb) => [cb.id, cb.checked])
+        ),
+        foodBeverage: Object.fromEntries(
+          Array.from(
+            document.querySelectorAll('input[name="foodBeverage"]')
+          ).map((cb) => [cb.id, cb.checked])
+        ),
+        entertainmentWifi: Object.fromEntries(
+          Array.from(
+            document.querySelectorAll('input[name="entertainmentWifi"]')
+          ).map((cb) => [cb.id, cb.checked])
+        ),
+        comment: document.getElementById("reviewComment").value,
+      };
+
+      const response = await axios.post(
+        "https://airlinereview-b835007a0bbc.herokuapp.com/api/v1/airline-review",
+        airlineData
+      );
+
+      if (response.status === 201) {
+        const score = response.data.data.score;
+        toastr.success(`Review submitted successfully! Score: ${score.toFixed(1)}/10`);
+        // Reset form
+        document.getElementById("reviewMedia").value = "";
+        document.getElementById("reviewMediaPreview").innerHTML = "";
+        document.getElementById("reviewComment").value = "";
+        document
+          .querySelectorAll('input[type="checkbox"]')
+          .forEach((cb) => (cb.checked = false));
+      } else {
+        toastr.error("Failed to submit review");
+      }
+    } catch (error) {
+      console.error("Error submitting review:", error);
+      toastr.error("Error submitting review");
+    } finally {
+      hideLoadingSpinner();
     }
   }
 }
 
-fetchAirlinesAndAirports();
+async function submitAirportReview() {
+  try {
+    showLoadingSpinner();
+
+    // Get all media wrapper elements from the preview container
+    const mediaWrappers = document.querySelectorAll(
+      "#airportReviewMediaPreview .media-wrapper"
+    );
+    let mediaUrls = [];
+
+    // Process each media wrapper
+    for (const wrapper of mediaWrappers) {
+      const mediaElement = wrapper.querySelector("img, video");
+      if (mediaElement) {
+        // Convert data URL to Blob
+        const response = await fetch(mediaElement.src);
+        const blob = await response.blob();
+
+        // Create file from blob
+        const fileName = wrapper.querySelector(".file-name").textContent;
+        const file = new File([blob], fileName, { type: blob.type });
+
+        // Upload to S3
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("folderName", "reviews");
+
+        try {
+          const response = await axios.post("/upload-to-s3", formData, {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          });
+          mediaUrls.push(response.data.url);
+        } catch (error) {
+          console.error("Error uploading media:", error);
+          toastr.error(`Error uploading ${fileName}`);
+        }
+      }
+    }
+
+    const airportData = {
+      reviewer: "678ddd644b12a3d332bcd9a9",
+      airport: document.getElementById("airportReviewAirportSelect").value,
+      airline: document.getElementById("airportReviewAirlineSelect").value,
+      imageUrls: mediaUrls,
+      classTravel:
+        document.querySelector('input[name="classTravel"]:checked').value ??
+        "Economy",
+      accessibility: Object.fromEntries(
+        Array.from(
+          document.querySelectorAll('input[name="accessibility"]')
+        ).map((cb) => [cb.id, cb.checked])
+      ),
+      waitTimes: Object.fromEntries(
+        Array.from(document.querySelectorAll('input[name="waitTimes"]')).map(
+          (cb) => [cb.id, cb.checked]
+        )
+      ),
+      helpfulness: Object.fromEntries(
+        Array.from(document.querySelectorAll('input[name="helpfulness"]')).map(
+          (cb) => [cb.id, cb.checked]
+        )
+      ),
+      ambienceComfort: Object.fromEntries(
+        Array.from(
+          document.querySelectorAll('input[name="ambienceComfort"]')
+        ).map((cb) => [cb.id, cb.checked])
+      ),
+      foodBeverage: Object.fromEntries(
+        Array.from(document.querySelectorAll('input[name="foodBeverage"]')).map(
+          (cb) => [cb.id, cb.checked]
+        )
+      ),
+      amenities: Object.fromEntries(
+        Array.from(document.querySelectorAll('input[name="amenities"]')).map(
+          (cb) => [cb.id, cb.checked]
+        )
+      ),
+      comment: document.getElementById("airportReviewComment").value,
+    };
+
+    // Send review data to backend
+    const response = await axios.post(
+      "https://airlinereview-b835007a0bbc.herokuapp.com/api/v1/airport-review",
+      airportData
+    );
+
+    if (response.status === 201) {
+      const score = response.data.data.score;
+      toastr.success(`Review submitted successfully! Score: ${score.toFixed(1)}/10`);
+      // Reset form
+      document.getElementById("airportReviewMedia").value = "";
+      document.getElementById("airportReviewMediaPreview").innerHTML = "";
+      document.getElementById("airportReviewComment").value = "";
+      document
+        .querySelectorAll('input[type="checkbox"]')
+        .forEach((cb) => (cb.checked = false));
+    } else {
+      toastr.error("Failed to submit review");
+    }
+  } catch (error) {
+    console.error("Error submitting review:", error);
+    toastr.error("Error submitting review");
+  } finally {
+    hideLoadingSpinner();
+  }
+}

@@ -9,31 +9,46 @@ require("dotenv").config();
 const app = express();
 
 // Configure AWS SDK
-const s3 = new AWS.S3({ 
+const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   region: process.env.AWS_REGION,
 });
 
 // Serve static files with correct MIME types
-app.use(express.static(path.join(__dirname), {
-  setHeaders: (res, path) => {
-    if (path.endsWith('.css')) {
-      res.setHeader('Content-Type', 'text/css');
-    }
-  }
-}));
+app.use(
+  express.static(path.join(__dirname), {
+    setHeaders: (res, path) => {
+      if (path.endsWith(".css")) {
+        res.setHeader("Content-Type", "text/css");
+      }
+    },
+  })
+);
 
 // Set up multer for handling file uploads
 const upload = multer({ storage: multer.memoryStorage() });
 
-const uploadFileToS3 = (fileBuffer, fileName) => {
-  const key = `${fileName}`;
+const uploadFileToS3 = (fileBuffer, fileName, folderName) => {
+  const destination = `${folderName}/${fileName}`;
+  const fileExtension = path.extname(fileName).toLowerCase();
+
+  let contentType;
+  if (fileExtension === ".mp4" || fileExtension === ".mov") {
+    contentType = "video/mp4";
+  } else if (fileExtension === ".jpg" || fileExtension === ".jpeg") {
+    contentType = "image/jpeg";
+  } else if (fileExtension === ".png") {
+    contentType = "image/png";
+  } else {
+    contentType = "application/octet-stream";
+  }
 
   const uploadParams = {
     Bucket: "airsharereview",
-    Key: key,
+    Key: destination,
     Body: fileBuffer,
+    ContentType: contentType,
     ACL: "public-read",
   };
 
@@ -41,11 +56,12 @@ const uploadFileToS3 = (fileBuffer, fileName) => {
     s3.upload(uploadParams, (err, data) => {
       if (err) {
         console.log("Error", err);
-        reject(err);
+        reject(new Error(`Failed to upload file: ${err}`));
       }
       if (data) {
         console.log("Uploaded in", data.Location);
-        resolve(data.Location);
+        const url = `https://d2ktq59qt1f9bd.cloudfront.net/${destination}`;
+        resolve(url);
       }
     });
   });
@@ -64,8 +80,12 @@ app.post("/upload-to-s3", upload.single("file"), async (req, res) => {
 
   try {
     const file = req.file;
-    const key = req.body.key;
-    const url = await uploadFileToS3(file.buffer, key);
+    const folderName = req.body.folderName || "default";
+    const url = await uploadFileToS3(
+      file.buffer,
+      file.originalname,
+      folderName
+    );
     res.json({ success: true, url });
   } catch (error) {
     console.error("Error uploading file:", error);

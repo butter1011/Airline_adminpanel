@@ -18,6 +18,8 @@
 </head>
 
 <body>
+    <div class="loading-spinner"></div>
+    <div class="loading-overlay"></div>
     <div class="container">
         <div class="sidebar">
             <ul class="sidebar-tabs">
@@ -53,7 +55,6 @@
                 <textarea id="airlineTrendingBio" placeholder="Trending Bio"></textarea>
                 <textarea id="airlinePerksBio" placeholder="Perks Bio"></textarea>
                 <button onclick="uploadAirlineFiles()">Upload Airline Files</button>
-                <div id="airlineLoadingSpinner" class="loading-spinner"></div>
                 <div id="uploadedAirlinesList" class="uploaded-list">
                     <h3>Uploaded Airlines</h3>
                     <ul></ul>
@@ -79,7 +80,6 @@
                 <textarea id="airportTrendingBio" placeholder="Trending Bio"></textarea>
                 <textarea id="airportPerksBio" placeholder="Perks Bio"></textarea>
                 <button onclick="uploadAirportFiles()">Upload Airport Files</button>
-                <div id="airportLoadingSpinner" class="loading-spinner"></div>
                 <div id="uploadedAirportsList" class="uploaded-list">
                     <h3>Uploaded Airports</h3>
                     <ul></ul>
@@ -88,33 +88,188 @@
         </div>
         <div class="tab-content" id="review-submit">
             <h2>Submit Your Review</h2>
+            <div class="form-group">
+                <label class="form-label">Review Type:</label>
+                <div class="radio-group">
+                    <div class="radio-item">
+                        <input type="radio" id="airlineReview" name="reviewType" value="airline">
+                        <label for="airlineReview">Airline Review</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" id="airportReview" name="reviewType" value="airport">
+                        <label for="airportReview">Airport Review</label>
+                    </div>
+                </div>
+            </div>
+
             <div class="review-form">
                 <div class="file-input-wrapper">
                     <div class="file-input-button">Choose Multiple Media Files (Max 50MB each)</div>
                     <input type="file" id="reviewMedia" accept="image/*,video/*" multiple
                         onchange="previewMultipleMedia(this, 'reviewMediaPreview')">
                 </div>
+                <div class="form-group">
+                    <label for="airportFromSelect" class="form-label">Departure Airport:</label>
+                    <select id="airportFromSelect" class="form-select"></select>
+                </div>
+                <div class="form-group">
+                    <label for="airportToSelect" class="form-label">Arrival Airport:</label>
+                    <select id="airportToSelect" class="form-select"></select>
+                </div>
+                <div class="form-group">
+                    <label for="airlineTravelSelect" class="form-label">Airline:</label>
+                    <select id="airlineTravelSelect" class="form-select"></select>
+                </div>
                 <div id="reviewMediaPreview" class="media-preview"></div>
-
-                <textarea id="reviewComment" placeholder="Write your review here..." class="review-comment"></textarea>
-
-                <div class="checkbox-group">
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="recommend" name="recommend">
-                        <label for="recommend">I recommend this</label>
+                <div class="form-group">
+                    <label class="form-label">Travel Class:</label>
+                    <div class="radio-group">
+                        <div class="radio-item">
+                            <input type="radio" id="airline_business" name="classTravel" value="Business">
+                            <label for="airline_business">Business Class</label>
+                        </div>
+                        <div class="radio-item">
+                            <input type="radio" id="airline_premium" name="classTravel" value="Premium Economy">
+                            <label for="airline_premium">Premium Economy</label>
+                        </div>
+                        <div class="radio-item">
+                            <input type="radio" id="airline_economy" name="classTravel" value="Economy" checked>
+                            <label for="airline_economy">Economy Class</label>
+                        </div>
                     </div>
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="anonymous" name="anonymous">
-                        <label for="anonymous">Post anonymously</label>
-                    </div>
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="terms" name="terms">
-                        <label for="terms">I agree to the terms and conditions</label>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Departure & Arrival:</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="airline_checkIn" name="departureArrival">
+                            <label for="airline_checkIn">Check-in Experience</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="airline_security" name="departureArrival">
+                            <label for="airline_security">Security Process</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="airline_boarding" name="departureArrival">
+                            <label for="airline_boarding">Boarding Process</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="airline_baggage" name="departureArrival">
+                            <label for="airline_baggage">Baggage Handling</label>
+                        </div>
                     </div>
                 </div>
 
+                <div class="form-group">
+                    <label class="form-label">Comfort:</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="airline_seatComfort" name="comfort">
+                            <label for="airline_seatComfort">Seat Comfort</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="airline_legroom" name="comfort">
+                            <label for="airline_legroom">Legroom</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="airline_cabinTemp" name="comfort">
+                            <label for="airline_cabinTemp">Cabin Temperature</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="airline_noise" name="comfort">
+                            <label for="airline_noise">Noise Level</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Cleanliness:</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="seatCleanliness" name="cleanliness">
+                            <label for="seatCleanliness">Seat Area</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="bathroom" name="cleanliness">
+                            <label for="bathroom">Bathroom</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="cabinCleanliness" name="cleanliness">
+                            <label for="cabinCleanliness">Cabin Interior</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Onboard Service:</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="crewAttitude" name="onboardService">
+                            <label for="crewAttitude">Crew Attitude</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="serviceSpeed" name="onboardService">
+                            <label for="serviceSpeed">Service Speed</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="specialAssistance" name="onboardService">
+                            <label for="specialAssistance">Special Assistance</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="communication" name="onboardService">
+                            <label for="communication">Communication</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Food & Beverage:</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="foodQuality" name="foodBeverage">
+                            <label for="foodQuality">Food Quality</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="beverageSelection" name="foodBeverage">
+                            <label for="beverageSelection">Beverage Selection</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="mealOptions" name="foodBeverage">
+                            <label for="mealOptions">Meal Options</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="presentation" name="foodBeverage">
+                            <label for="presentation">Presentation</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Entertainment & WiFi:</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="movieSelection" name="entertainmentWifi">
+                            <label for="movieSelection">Movie Selection</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="wifiQuality" name="entertainmentWifi">
+                            <label for="wifiQuality">WiFi Quality</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="screenQuality" name="entertainmentWifi">
+                            <label for="screenQuality">Screen Quality</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="userInterface" name="entertainmentWifi">
+                            <label for="userInterface">User Interface</label>
+                        </div>
+                    </div>
+                </div>
+
+
+                <textarea id="reviewComment" placeholder="Write your comment here..." class="review-comment"></textarea>
+
                 <button onclick="submitReview()" class="submit-review-btn">Submit Review</button>
-                <div id="reviewLoadingSpinner" class="loading-spinner"></div>
             </div>
 
         </div>
