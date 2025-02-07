@@ -217,18 +217,16 @@ function resetForm(type) {
  * @param {string} type - The type of entity (airline/airport)
  * @param {string} name - The name of the uploaded item
  */
-function updateUploadedList(type, items) {
+function updateUploadedList(type, name) {
   const list = document.querySelector(
     `#uploaded${type.charAt(0).toUpperCase() + type.slice(1)}sList ul`
   );
   if (!list) return;
 
   list.innerHTML = ""; // Clear existing items
-  items.forEach((item) => {
-    const listItem = document.createElement("li");
-    listItem.textContent = item.name;
-    list.appendChild(listItem);
-  });
+  const listItem = document.createElement("li");
+  listItem.textContent = name;
+  list.appendChild(listItem);
 }
 
 const uploadAirlineFiles = () => uploadFiles("airline");
@@ -240,48 +238,23 @@ const uploadAirportFiles = () => uploadFiles("airport");
  * @param {string} key - The S3 key for the file
  * @returns {Promise<string>} The URL of the uploaded file
  */
-const uploadFileToS3 = (fileBuffer, fileName, folderName) => {
-  const destination = `${folderName}/${fileName}`;
-  const fileExtension = path.extname(fileName).toLowerCase();
+async function uploadFileToS3(file, folderName) {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("folderName", folderName);
 
-  let contentType;
-  if (fileExtension === ".mp4" || fileExtension === ".mov") {
-    contentType = "video/mp4";
-  } else if (fileExtension === ".jpg" || fileExtension === ".jpeg") {
-    contentType = "image/jpeg";
-  } else if (fileExtension === ".png") {
-    contentType = "image/png";
-  } else {
-    contentType = "application/octet-stream";
-  }
-
-  const uploadParams = {
-    Bucket: "airsharereview",
-    Key: destination,
-    Body: fileBuffer,
-    ContentType: contentType,
-    ACL: "public-read",
-  };
-
-  const options = {
-    partSize: 10 * 1024 * 1024, // 10MB chunks
-    queueSize: 1,
-  };
-
-  return new Promise((resolve, reject) => {
-    s3.upload(uploadParams, options, (err, data) => {
-      if (err) {
-        console.log("Error", err);
-        reject(new Error(`Failed to upload file: ${err}`));
-      }
-      if (data) {
-        console.log("Uploaded in", data.Location);
-        const url = `https://d2ktq59qt1f9bd.cloudfront.net/${destination}`;
-        resolve(url);
-      }
+  try {
+    const response = await axios.post("/upload-to-s3", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
     });
-  });
-};
+    return response.data.url;
+  } catch (error) {
+    console.error("Error uploading file to S3:", error);
+    throw new Error("Failed to upload file");
+  }
+}
 
 /**
  * Previews an image before upload
