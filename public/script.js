@@ -45,7 +45,7 @@ async function deleteReview(reviewId, type) {
   try {
     showLoadingSpinner();
     const response = await axios.post(
-      `http://localhost:3000/api/v1/airline-airport/delete`,
+      `https://airlinereview-b835007a0bbc.herokuapp.com/api/v1/airline-airport/delete`,
       {
         id: reviewId,
         isAirline: type.toLowerCase() === "airline",
@@ -69,7 +69,7 @@ async function deleteReview(reviewId, type) {
 async function fetchReviews(page = 1, airType = "airline", searchQuery = "") {
   try {
     showLoadingSpinner();
-    const response = await axios.get(`http://localhost:3000/api/v2/feed-list`, {
+    const response = await axios.get(`https://airlinereview-b835007a0bbc.herokuapp.com/api/v2/feed-list`, {
       params: {
         page,
         airType,
@@ -195,7 +195,7 @@ function fetchAirlinesAndAirports() {
   showLoadingSpinner();
   try {
     axios
-      .get("http://localhost:3000/api/v2/airline-airport/lists")
+      .get("https://airlinereview-b835007a0bbc.herokuapp.com/api/v2/airline-airport/lists")
       .then((response) => {
         const { data } = response.data;
         airlines = data.airlines;
@@ -866,7 +866,7 @@ async function submitReview() {
       };
 
       const response = await axios.post(
-        "http://localhost:3000/api/v1/airline-review",
+        "https://airlinereview-b835007a0bbc.herokuapp.com/api/v1/airline-review",
         airlineData
       );
 
@@ -978,7 +978,7 @@ async function submitAirportReview() {
 
     // Send review data to backend
     const response = await axios.post(
-      "http://localhost:3000/api/v1/airport-review",
+      "https://airlinereview-b835007a0bbc.herokuapp.com/api/v1/airport-review",
       airportData
     );
 
