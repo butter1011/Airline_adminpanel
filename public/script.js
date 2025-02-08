@@ -1,6 +1,11 @@
 let airlines = [];
 let airports = [];
 let uploadedFiles = new Set();
+// Global variables for pagination
+let currentPage = 1;
+let currentType = "airline";
+let searchQuery = "";
+let reviewToDelete = null;
 
 // Configure toastr notification settings
 toastr.options = {
@@ -20,6 +25,123 @@ toastr.options = {
   showMethod: "fadeIn",
   hideMethod: "fadeOut",
 };
+
+// Authentication check
+if (!localStorage.getItem("isLoggedIn")) {
+  window.location.href = "login.html";
+}
+
+function showDeleteModal(reviewId, type) {
+  reviewToDelete = { id: reviewId, type: type };
+  document.getElementById("deleteModal").style.display = "block";
+}
+
+function hideDeleteModal() {
+  document.getElementById("deleteModal").style.display = "none";
+  reviewToDelete = null;
+}
+
+async function deleteReview(reviewId, type) {
+  try {
+    showLoadingSpinner();
+    const response = await axios.post(
+      `http://localhost:3000/api/v1/airline-airport/delete`,
+      {
+        id: reviewId,
+        isAirline: type.toLowerCase() === "airline",
+      }
+    );
+
+    if (response.data.success) {
+      toastr.success("Review deleted successfully");
+      fetchReviews(currentPage, currentType, searchQuery);
+    } else {
+      toastr.error(response.data.message || "Failed to delete review");
+    }
+  } catch (error) {
+    console.error("Error deleting review:", error);
+    toastr.error(error.response?.data?.message || "Error deleting review");
+  } finally {
+    hideLoadingSpinner();
+  }
+}
+// Function to fetch and display reviews
+async function fetchReviews(page = 1, airType = "airline", searchQuery = "") {
+  try {
+    showLoadingSpinner();
+    const response = await axios.get(`http://localhost:3000/api/v2/feed-list`, {
+      params: {
+        page,
+        airType,
+        flyerClass: "All",
+        searchQuery,
+      },
+    });
+
+    const { data, hasMore, currentPage: newPage } = response.data;
+
+    // Update pagination controls
+    document.getElementById("nextPage").disabled = !hasMore;
+    document.getElementById("prevPage").disabled = page === 1;
+    document.getElementById("currentPage").textContent = page;
+    currentPage = page;
+
+    // Display reviews in table
+    const reviewsList = document.getElementById("reviewsList");
+    reviewsList.innerHTML = "";
+
+    data.forEach((review) => {
+      const row = document.createElement("tr");
+      const isAirlineReview = airType.toLowerCase() === "airline";
+
+      if (isAirlineReview) {
+        row.innerHTML = `
+                  <td>${new Date(review.date).toLocaleDateString()}</td>
+                  <td>${review.reviewer?.name || "Unknown"}</td>
+                  <td>${review.from?.name || "N/A"}</td>
+                  <td>${review.airline?.name || "N/A"}</td>
+                  <td>${review.classTravel || "N/A"}</td>
+                  <td>${review.comment || "No comment"}</td>
+                  <td class="media-cell">
+                      ${renderMediaPreview(review.imageUrls || [])}
+                  </td>
+                  <td>
+                      <button onclick="showDeleteModal('${
+                        review._id
+                      }', 'airline')" class="delete-btn">
+                          <i class="fas fa-trash"></i>
+                      </button>
+                  </td>
+              `;
+      } else {
+        row.innerHTML = `
+                  <td>${new Date(review.date).toLocaleDateString()}</td>
+                  <td>${review.reviewer?.name || "Unknown"}</td>
+                  <td>${review.airport?.name || "N/A"}</td>
+                  <td>${review.airline?.name || "N/A"}</td>
+                  <td>${review.classTravel || "N/A"}</td>
+                  <td>${review.comment || "No comment"}</td>
+                  <td class="media-cell">
+                      ${renderMediaPreview(review.imageUrls || [])}
+                  </td>
+                  <td>
+                      <button onclick="showDeleteModal('${
+                        review._id
+                      }', 'airport')" class="delete-btn">
+                          <i class="fas fa-trash"></i>
+                      </button>
+                  </td>
+              `;
+      }
+      reviewsList.appendChild(row);
+    });
+  } catch (error) {
+    console.error("Error fetching reviews:", error);
+    toastr.error("Failed to fetch reviews");
+  } finally {
+    hideLoadingSpinner();
+  }
+}
 
 /**
  * Saves information for a given entity type
@@ -73,9 +195,7 @@ function fetchAirlinesAndAirports() {
   showLoadingSpinner();
   try {
     axios
-      .get(
-        "https://airlinereview-b835007a0bbc.herokuapp.com/api/v2/airline-airport/lists"
-      )
+      .get("http://localhost:3000/api/v2/airline-airport/lists")
       .then((response) => {
         const { data } = response.data;
         airlines = data.airlines;
@@ -287,6 +407,48 @@ function previewImage(input, previewId) {
   reader.readAsDataURL(file);
 }
 
+// Update the media display in fetchReviews function
+function renderMediaPreview(mediaUrls) {
+  return mediaUrls
+    .map((url) => {
+      // Check if URL is a video
+      const isVideo = url.includes(".mp4");
+
+      // Check if URL is an image
+      const isImage =
+        url.includes(".jpg") || url.includes(".jpeg") || url.includes(".png");
+
+      if (isVideo) {
+        return `
+              <div class="media-item video">
+                  <video controls>
+                      <source src="${url}" type="video/mp4">
+                  </video>
+              </div>`;
+      } else if (isImage) {
+        return `
+              <div class="media-item">
+                  <img src="${url}" alt="Review media">
+              </div>`;
+      }
+      return "";
+    })
+    .join("");
+}
+
+// Debounce function for search input
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
 /**
  * Validates file size
  * @param {File} file - The file to validate
@@ -357,12 +519,57 @@ function previewMultipleMedia(input, previewContainerId) {
   existingFiles.forEach((file) => previewContainer.appendChild(file));
   return fileArray;
 }
+
+// Event listeners for filters and pagination
+document.getElementById("filterReviewType").addEventListener("change", (e) => {
+  currentType = e.target.value;
+  currentPage = 1;
+  fetchReviews(currentPage, currentType, searchQuery);
+});
+
+document.getElementById("searchReview").addEventListener(
+  "input",
+  debounce((e) => {
+    searchQuery = e.target.value;
+    currentPage = 1;
+    fetchReviews(currentPage, currentType, searchQuery);
+  }, 500)
+);
+
 // Initialize application
 document.addEventListener("DOMContentLoaded", () => {
   fetchAirlinesAndAirports();
 
+  document.querySelector(".close-modal").onclick = hideDeleteModal;
+  document.querySelector(".cancel-btn").onclick = hideDeleteModal;
+  document.querySelector(".confirm-delete-btn").onclick = async () => {
+    if (reviewToDelete) {
+      await deleteReview(reviewToDelete.id, reviewToDelete.type);
+      hideDeleteModal();
+    }
+  };
+  window.onclick = (event) => {
+    if (event.target === document.getElementById("deleteModal")) {
+      hideDeleteModal();
+    }
+  };
+  const reviewManageTab = document.querySelector('[data-tab="review-manage"]');
+  reviewManageTab.addEventListener("click", () => {
+    fetchReviews(currentPage, currentType, searchQuery);
+  });
+
   // Set default selections
   document.getElementById("airlineReview").checked = true;
+
+  document.getElementById("nextPage").addEventListener("click", () => {
+    fetchReviews(currentPage + 1, currentType, searchQuery);
+  });
+
+  document.getElementById("prevPage").addEventListener("click", () => {
+    if (currentPage > 1) {
+      fetchReviews(currentPage - 1, currentType, searchQuery);
+    }
+  });
 
   // Initialize sidebar tabs
   document.querySelectorAll(".sidebar-tabs li").forEach((tab) => {
@@ -659,13 +866,15 @@ async function submitReview() {
       };
 
       const response = await axios.post(
-        "https://airlinereview-b835007a0bbc.herokuapp.com/api/v1/airline-review",
+        "http://localhost:3000/api/v1/airline-review",
         airlineData
       );
 
       if (response.status === 201) {
         const score = response.data.data.score;
-        toastr.success(`Review submitted successfully! Score: ${score.toFixed(1)}/10`);
+        toastr.success(
+          `Review submitted successfully! Score: ${score.toFixed(1)}/10`
+        );
         // Reset form
         document.getElementById("reviewMedia").value = "";
         document.getElementById("reviewMediaPreview").innerHTML = "";
@@ -769,13 +978,15 @@ async function submitAirportReview() {
 
     // Send review data to backend
     const response = await axios.post(
-      "https://airlinereview-b835007a0bbc.herokuapp.com/api/v1/airport-review",
+      "http://localhost:3000/api/v1/airport-review",
       airportData
     );
 
     if (response.status === 201) {
       const score = response.data.data.score;
-      toastr.success(`Review submitted successfully! Score: ${score.toFixed(1)}/10`);
+      toastr.success(
+        `Review submitted successfully! Score: ${score.toFixed(1)}/10`
+      );
       // Reset form
       document.getElementById("airportReviewMedia").value = "";
       document.getElementById("airportReviewMediaPreview").innerHTML = "";
