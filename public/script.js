@@ -250,71 +250,64 @@ async function uploadFiles(type) {
   const logo = document.getElementById(`${type}Logo`).files[0];
   const background = document.getElementById(`${type}Background`).files[0];
   const id = select.value;
-  const description = document
-    .getElementById(`${type}Description`)
-    .value?.trim();
-  const trendingBio = document
-    .getElementById(`${type}TrendingBio`)
-    .value?.trim();
+  const description = document.getElementById(`${type}Description`).value?.trim();
+  const trendingBio = document.getElementById(`${type}TrendingBio`).value?.trim();
   const perksBio = document.getElementById(`${type}PerksBio`).value?.trim();
 
-  if (!id || !logo) {
-    toastr.warning("Please select an ID and upload a logo file.");
-    return;
+  if (!id) {
+      toastr.warning("Please select an ID");
+      return;
   }
 
-  if (
-    logo.type !== "image/png" ||
-    (background && background.type !== "image/png")
-  ) {
-    toastr.error("Please upload PNG files only.");
-    return;
-  }
-
-  const logoKey = `logos/${id}.png`;
-  const backgroundKey = background ? `backgrounds/${id}.png` : null;
-
-  if (
-    uploadedFiles.has(logoKey) ||
-    (backgroundKey && uploadedFiles.has(backgroundKey))
-  ) {
-    toastr.info("Files for this item have already been uploaded.");
-    return;
-  }
+  let logoImage = null;
+  let backgroundImage = null;
 
   showLoadingSpinner();
   try {
-    const logoImage = await uploadFileToS3(logo, logoKey);
-    let backgroundImage = null;
+      // Upload logo if provided
+      if (logo) {
+          if (logo.type !== "image/png") {
+              toastr.error("Logo must be a PNG file");
+              return;
+          }
+          const logoKey = `logos/${id}.png`;
+          logoImage = await uploadFileToS3(logo, logoKey);
+      }
 
-    if (background) {
-      backgroundImage = await uploadFileToS3(background, backgroundKey);
-      uploadedFiles.add(backgroundKey);
-    }
+      // Upload background if provided
+      if (background) {
+          if (background.type !== "image/png") {
+              toastr.error("Background must be a PNG file");
+              return;
+          }
+          const backgroundKey = `backgrounds/${id}.png`;
+          backgroundImage = await uploadFileToS3(background, backgroundKey);
+      }
 
-    uploadedFiles.add(logoKey);
+      // Only include fields that have changed
+      const updateData = {
+          id,
+          ...(logoImage && { logoImage }),
+          ...(backgroundImage && { backgroundImage }),
+          ...(description && { description }),
+          ...(trendingBio && { trendingBio }),
+          ...(perksBio && { perksBio })
+      };
 
-    const response = await axios.post("/save-info", {
-      id,
-      logoImage,
-      backgroundImage,
-      description: description || null,
-      trendingBio: trendingBio || null,
-      perksBio: perksBio || null,
-    });
+      const response = await axios.post("/save-info", updateData);
 
-    if (response.data.success) {
-      toastr.success("Files and information uploaded successfully!");
-      resetForm(type);
-      updateUploadedList(type, select.options[select.selectedIndex].text);
-    } else {
-      toastr.error("Failed to save information. Please try again.");
-    }
+      if (response.data.success) {
+          toastr.success("Information updated successfully!");
+          resetForm(type);
+          updateUploadedList(type, select.options[select.selectedIndex].text);
+      } else {
+          toastr.error("Failed to save information. Please try again.");
+      }
   } catch (error) {
-    console.error("Error uploading files:", error);
-    toastr.error("Error uploading files. Please try again.");
+      console.error("Error uploading files:", error);
+      toastr.error("Error uploading files. Please try again.");
   } finally {
-    hideLoadingSpinner();
+      hideLoadingSpinner();
   }
 }
 
